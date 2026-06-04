@@ -1,0 +1,58 @@
+@model IEnumerable<DBMonitor.Models.SavedQuery>
+@{
+    ViewData["Title"] = "Saved Queries";
+    var profileId = ViewBag.ProfileId as Guid?;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Saved Queries</h2>
+    <a asp-action="Create" asp-route-profileId="@profileId" class="btn btn-primary">+ New Query</a>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="text-center py-5 text-muted">
+        <p class="mb-2 fs-4">No saved queries yet.</p>
+        <p class="mb-3 small">Save a query from the SQL editor to quickly reload it later.</p>
+        <a asp-action="Create" class="btn btn-primary">Save your first query</a>
+    </div>
+}
+else
+{
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Scope</th>
+                <th>Uses</th>
+                <th>Last used</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var q in Model)
+            {
+                <tr>
+                    <td class="fw-semibold">@q.Name</td>
+                    <td class="text-muted small">@(q.Description ?? "—")</td>
+                    <td class="small">@(q.ProfileId.HasValue ? "Profile" : "Global")</td>
+                    <td class="small text-muted">@q.UseCount</td>
+                    <td class="small text-muted">@(q.LastUsedUtc.HasValue ? q.LastUsedUtc.Value.ToString("yyyy-MM-dd HH:mm") + " UTC" : "—")</td>
+                    <td class="text-end">
+                        @if (q.ProfileId.HasValue)
+                        {
+                            <a asp-action="Run" asp-route-id="@q.Id" asp-route-profileId="@q.ProfileId" class="btn btn-sm btn-success">Run</a>
+                        }
+                        <a asp-action="Edit" asp-route-id="@q.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                        <form asp-action="Delete" asp-route-id="@q.Id" method="post" class="d-inline"
+                              onsubmit="return confirm('Delete this saved query?')">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

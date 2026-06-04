@@ -1,0 +1,241 @@
+@model DBMonitor.Models.ViewModels.ProcedureVm
+@using DBMonitor.Services.Schema
+@using System.Data
+@{
+    ViewData["Title"] = Model.Schema + "." + Model.Name + " — Procedure";
+    Layout = "_Layout";
+
+    var isFunction = Model.Routine.Type == SchemaObjectType.Function;
+    var defLines   = (Model.Routine.Definition ?? "").Split('\n').Length;
+    var defCollapsed = defLines > 80;
+
+    // Build a readable type label for a parameter (e.g. "nvarchar(50)", "decimal(18,2)").
+    Func<RoutineParameter, string> typeLabel = p =>
+    {
+        var bt = p.DataType;
+        if ((bt == "decimal" || bt == "numeric") && p.Precision.HasValue)
+            return $"{bt}({p.Precision},{p.Scale ?? 0})";
+        if (p.MaxLength.HasValue && p.MaxLength != 0)
+            return $"{bt}({(p.MaxLength == -1 ? "MAX" : p.MaxLength.ToString())})";
+        return bt;
+    };
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Connections" asp-action="Index">Connections</a></li>
+        <li class="breadcrumb-item">
+            <a asp-controller="Schema" asp-action="Browse" asp-route-profileId="@Model.ProfileId">@Model.ProfileName</a>
+        </li>
+        <li class="breadcrumb-item active">@(Model.Schema + "." + Model.Name)</li>
+    </ol>
+</nav>
+
+<div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+    <h2 class="mb-0 h4">
+        <span class="badge bg-secondary me-1">@Model.Provider</span>
+        <code>@(Model.Schema + "." + Model.Name)</code>
+    </h2>
+    <span class="badge @(isFunction ? "bg-info text-dark" : "bg-primary")">
+        @(isFunction ? "FUNCTION" : "PROCEDURE")
+    </span>
+    <span id="exec-badge"  class="badge bg-light text-dark border d-none"></span>
+    <span id="rows-badge"  class="badge bg-light text-dark border d-none"></span>
+    <div class="ms-auto d-flex gap-2">
+        <a href="@Model.ExecEditorUrl" class="btn btn-sm btn-outline-primary">Open as SQL &rarr;</a>
+        <a asp-controller="Schema" asp-action="Browse" asp-route-profileId="@Model.ProfileId"
+           class="btn btn-sm btn-outline-secondary">&larr; Schema</a>
+    </div>
+</div>
+
+@if (isFunction)
+{
+    @* Functions are scoped out of the procedure runner: TABLE-valued and scalar functions
+       require a SELECT wrapper that the parameter form does not generate.
+       Use "Open as SQL" above to run this in the editor.
+       Do not add function execution here in future work without addressing that distinction. *@
+    <div class="alert alert-info">
+        Functions cannot be executed through the procedure runner — use <strong>Open as SQL</strong> to run this in the SQL editor.
+    </div>
+}
+
+<div class="d-flex gap-2 align-items-start" style="min-height: 70vh;">
+
+    @* ── Left: definition viewer ───────────────────────────────────────────── *@
+    <div class="border rounded bg-light d-flex flex-column" style="width:300px;min-width:300px;">
+        <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
+            <span class="small fw-semibold text-muted">Definition</span>
+            <button id="btn-toggle-def" class="btn btn-sm btn-link p-0 small">
+                @(defCollapsed ? "Show" : "Hide")
+            </button>
+        </div>
+        <div id="def-panel" style="@(defCollapsed ? "display:none" : "")">
+            <pre class="p-2 m-0 small font-monospace overflow-auto" style="max-height:75vh;white-space:pre-wrap">@Html.Raw(System.Web.HttpUtility.HtmlEncode(Model.Routine.Definition))</pre>
+        </div>
+    </div>
+
+    @* ── Center: parameter form + results ─────────────────────────────────── *@
+    <div class="flex-grow-1 d-flex flex-column gap-2" style="min-width:0">
+
+        @if (!isFunction)
+        {
+            @* Toolbar *@
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                <button id="btn-run" class="btn btn-sm btn-primary">&#9654; Run</button>
+                <label class="d-flex align-items-center gap-1 small">
+                    Timeout
+                    <input id="txt-timeout" type="number" class="form-control form-control-sm" style="width:65px" value="30" min="1" max="300" />
+                    s
+                </label>
+                <label class="d-flex align-items-center gap-1 small">
+                    Max rows
+                    <select id="sel-maxrows" class="form-select form-select-sm" style="width:auto">
+                        <option value="100">100</option>
+                        <option value="500">500</option>
+                        <option value="1000" selected>1 000</option>
+                        <option value="5000">5 000</option>
+                        <option value="10000">10 000</option>
+                    </select>
+                </label>
+                @* No "Allow destructive" checkbox here.
+                   Procedures are explicit user intent: the user deliberately navigated to this page
+                   and clicked Run. The transaction guard from the SQL editor does not apply.
+                   Do not add this checkbox in future "harmonization" with the SQL editor. *@
+                <button id="btn-reset" class="btn btn-sm btn-outline-secondary ms-auto">Reset</button>
+            </div>
+
+            @* Parameter form *@
+            <div class="border rounded p-3 bg-white" id="param-form">
+                @if (!Model.Routine.Parameters.Any())
+                {
+                    <div class="text-muted small fst-italic">(No parameters)</div>
+                }
+                else
+                {
+                    foreach (var p in Model.Routine.Parameters)
+                    {
+                        var isOutputOnly = p.Direction == ParameterDirection.Output;
+                        var isOutput     = p.Direction is ParameterDirection.InputOutput or ParameterDirection.Output;
+                        var tl           = typeLabel(p);
+                        var defaultTip   = p.DefaultValueText != null ? $"Default: {p.DefaultValueText}" : null;
+
+                        <div class="param-row mb-2 d-flex align-items-start gap-2 flex-wrap"
+                             data-name="@p.Name"
+                             data-output-only="@isOutputOnly.ToString().ToLower()">
+
+                            @* Label + type badge *@
+                            <div style="min-width:180px;max-width:220px" class="pt-1">
+                                <code class="fw-semibold">@p.Name</code>
+                                <span class="badge bg-secondary ms-1 font-monospace"
+                                      title="@defaultTip">@tl</span>
+                                @if (isOutput)
+                                {
+                                    <span class="badge bg-warning text-dark ms-1">OUTPUT</span>
+                                }
+                            </div>
+
+                            @* Value input *@
+                            @if (isOutputOnly)
+                            {
+                                <input type="text" class="form-control form-control-sm param-value"
+                                       style="width:260px" disabled placeholder="(output — no input needed)" />
+                            }
+                            else if (p.DataType is "bit" or "boolean" or "bool")
+                            {
+                                <select class="form-select form-select-sm param-value" style="width:140px">
+                                    <option value="">— select —</option>
+                                    <option value="true">true</option>
+                                    <option value="false">false</option>
+                                </select>
+                            }
+                            else if (p.DataType == "date")
+                            {
+                                <input type="date" class="form-control form-control-sm param-value" style="width:180px" />
+                            }
+                            else if (p.DataType is "datetime" or "datetime2" or "smalldatetime"
+                                              or "timestamp" or "timestamp without time zone")
+                            {
+                                <input type="datetime-local" class="form-control form-control-sm param-value" style="width:220px" />
+                            }
+                            else if (p.DataType is "time" or "time without time zone")
+                            {
+                                <input type="time" class="form-control form-control-sm param-value" style="width:150px" />
+                            }
+                            else
+                            {
+                                <input type="text" class="form-control form-control-sm param-value font-monospace"
+                                       style="width:260px"
+                                       placeholder="@(p.DataType is "binary" or "varbinary" or "bytea" or "image" ? "0x..." : tl)" />
+                            }
+
+                            @if (!isOutputOnly)
+                            {
+                                @* NULL checkbox — disables the value input and submits IsNull=true *@
+                                <div class="form-check mb-0 pt-1">
+                                    <input class="form-check-input param-null" type="checkbox" id="null-@p.Name" />
+                                    <label class="form-check-label small" for="null-@p.Name">NULL</label>
+                                </div>
+
+                                @* UseDefault checkbox — omits the parameter so the proc uses its DEFAULT.
+                                   Only shown when the proc metadata reports a default value. *@
+                                @if (p.HasDefault)
+                                {
+                                    <div class="form-check mb-0 pt-1">
+                                        <input class="form-check-input param-default" type="checkbox" id="def-@p.Name" />
+                                        <label class="form-check-label small text-muted" for="def-@p.Name">
+                                            Use default@(p.DefaultValueText != null ? $" ({p.DefaultValueText})" : "")
+                                        </label>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
+                }
+            </div>
+
+            @* Error / info banners *@
+            <div id="exec-error" class="alert alert-danger d-none mb-0"></div>
+            <div id="exec-info"  class="alert alert-info  d-none mb-0 small"></div>
+
+            @* Output parameters panel (shown after execution if there are OUTPUT values) *@
+            <div id="output-params-panel" class="d-none">
+                <h6 class="mb-1">Output parameters</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr><th>Parameter</th><th>Value</th></tr>
+                        </thead>
+                        <tbody id="output-params-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            @* Result sets area *@
+            <div id="results-area" class="d-none flex-grow-1 d-flex flex-column">
+                <ul id="result-tabs" class="nav nav-tabs" role="tablist"></ul>
+                <div id="result-panels"
+                     class="tab-content border border-top-0 rounded-bottom overflow-auto"
+                     style="max-height:40vh;"></div>
+            </div>
+        }
+    </div>
+
+</div>
+
+@* Anti-forgery token *@
+<div hidden>@Html.AntiForgeryToken()</div>
+
+@section Scripts {
+    <script>
+        window.__procCtx = {
+            profileId:   '@Model.ProfileId',
+            schema:      '@Html.Raw(Model.Schema.Replace("'", "\\'"))',
+            name:        '@Html.Raw(Model.Name.Replace("'", "\\'"))',
+            executeUrl:  '@Url.Action("ExecuteProcedure", "Sql", new { profileId = Model.ProfileId })',
+            provider:    '@Model.Provider',
+            isFunction:  @(isFunction ? "true" : "false"),
+        };
+    </script>
+    <script src="~/js/result-grid.js" asp-append-version="true"></script>
+    <script src="~/js/procedure-runner.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,331 @@
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@{
+    ViewData["Title"] = "Import CSV — " + ViewData["ProfileName"];
+    var profileId   = (Guid)ViewData["ProfileId"]!;
+    var provider    = (string)ViewData["Provider"]!;
+    var presetSchema = (string)ViewData["PresetSchema"]!;
+    var presetTable  = (string)ViewData["PresetTable"]!;
+}
+
+<div class="page-header">
+    <h2 class="mb-0 h4">
+        <span class="badge bg-secondary me-2">@provider</span>@ViewData["ProfileName"]
+        <span class="text-muted fw-normal fs-6 ms-2">— Import CSV</span>
+    </h2>
+    <div class="d-flex gap-2">
+        <a asp-controller="Schema" asp-action="Browse" asp-route-profileId="@profileId"
+           class="btn btn-sm btn-outline-secondary">&larr; Schema Browser</a>
+        <a asp-controller="Connections" asp-action="Index"
+           class="btn btn-sm btn-outline-secondary">&larr; Connections</a>
+    </div>
+</div>
+
+@* Context data consumed by import-wizard.js *@
+<script>
+    window.__importCtx = {
+        profileId:    '@profileId',
+        provider:     '@provider',
+        presetSchema: '@Html.Raw(System.Text.Json.JsonSerializer.Serialize(presetSchema))',
+        presetTable:  '@Html.Raw(System.Text.Json.JsonSerializer.Serialize(presetTable))',
+        uploadUrl:    '@Url.Action("Upload",       "Import", new { profileId })',
+        inspectUrl:   '@Url.Action("Inspect",      "Import", new { profileId })',
+        columnsUrl:   '@Url.Action("TargetColumns","Import", new { profileId })',
+        previewUrl:   '@Url.Action("Preview",      "Import", new { profileId })',
+        executeUrl:        '@Url.Action("Execute",       "Import", new { profileId })',
+        inferSchemaUrl:    '@Url.Action("InferSchema",  "Import", new { profileId })',
+        executeCreateUrl:  '@Url.Action("ExecuteCreate","Import", new { profileId })',
+        objectsUrl:        '@Url.Action("Objects",      "Schema", new { profileId })',
+        antiforgery:  '@Antiforgery.GetAndStoreTokens(Context).RequestToken',
+    };
+</script>
+
+@* ── Step 1: Upload ─────────────────────────────────────────────── *@
+<div id="step-upload" class="card mb-3">
+    <div class="card-header fw-semibold">Step 1 — Upload CSV file</div>
+    <div class="card-body">
+        <p class="text-muted small mb-2">
+            Accepted: <code>.csv</code>, <code>.tsv</code>, <code>.txt</code> &nbsp;·&nbsp;
+            Max size: <strong>100 MB</strong>
+        </p>
+
+        <div id="drop-zone"
+             class="border border-dashed rounded p-5 text-center mb-3"
+             style="cursor:pointer; border-style:dashed!important">
+            <div id="drop-icon" class="display-6 mb-2">📂</div>
+            <div id="drop-label">Drag &amp; drop your CSV here, or <strong>click to browse</strong></div>
+            <input id="file-input" type="file" accept=".csv,.tsv,.txt" class="d-none" />
+        </div>
+
+        <div id="upload-progress" class="d-none">
+            <div class="progress mb-2" style="height:6px">
+                <div id="upload-bar" class="progress-bar" style="width:0%"></div>
+            </div>
+            <small id="upload-status" class="text-muted">Uploading…</small>
+        </div>
+
+        <div id="upload-error" class="alert alert-danger d-none"></div>
+    </div>
+</div>
+
+@* ── Step 2: Configure ──────────────────────────────────────────── *@
+<div id="step-configure" class="card mb-3 d-none">
+    <div class="card-header fw-semibold">Step 2 — Configure</div>
+    <div class="card-body">
+        <div class="row g-3">
+
+            @* Target schema + table *@
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Schema</label>
+                <select id="cfg-schema" class="form-select">
+                    <option value="">Loading…</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Table</label>
+                <select id="cfg-table" class="form-select">
+                    <option value="">Select a schema first</option>
+                </select>
+            </div>
+
+            @* Create new table toggle *@
+            <div class="col-12">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="cfg-new-table" />
+                    <label class="form-check-label fw-semibold" for="cfg-new-table">
+                        Create new table (table does not exist yet)
+                    </label>
+                </div>
+                <div id="new-table-panel" class="mt-2 d-none">
+                    <input id="cfg-new-table-name" type="text" class="form-control form-control-sm"
+                           placeholder="New table name…" style="max-width:300px" />
+                    <div class="form-text">The table will be created using types inferred from your CSV data.</div>
+                </div>
+            </div>
+
+            @* Delimiter *@
+            <div class="col-md-2">
+                <label class="form-label fw-semibold">Delimiter</label>
+                <select id="cfg-delim" class="form-select">
+                    <option value="auto">Auto-detect</option>
+                    <option value=",">,  (comma)</option>
+                    <option value=";">; (semicolon)</option>
+                    <option value="&#9;">⇥ (tab)</option>
+                    <option value="|">| (pipe)</option>
+                </select>
+            </div>
+
+            @* Has header *@
+            <div class="col-md-3 d-flex align-items-end pb-1">
+                <div class="form-check">
+                    <input id="cfg-header" class="form-check-input" type="checkbox" checked />
+                    <label class="form-check-label" for="cfg-header">First row is header</label>
+                </div>
+            </div>
+
+            @* Encoding *@
+            <div class="col-md-2">
+                <label class="form-label fw-semibold">Encoding</label>
+                <select id="cfg-encoding" class="form-select">
+                    <option value="auto">Auto-detect</option>
+                    <option value="utf-8">UTF-8</option>
+                    <option value="utf-16">UTF-16</option>
+                    <option value="windows-1252">Windows-1252</option>
+                </select>
+            </div>
+
+            @* Culture *@
+            <div class="col-md-2">
+                <label class="form-label fw-semibold">Number/Date format</label>
+                <select id="cfg-culture" class="form-select">
+                    <option value="invariant">Invariant (1234.56)</option>
+                    <option value="en-US">en-US  (1,234.56)</option>
+                    <option value="de-DE">de-DE  (1.234,56)</option>
+                    <option value="fr-FR">fr-FR  (1 234,56)</option>
+                </select>
+            </div>
+
+            @* Null handling *@
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Empty cells become</label>
+                <div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="cfg-null"
+                               id="null-empty" value="EmptyAsNull" checked />
+                        <label class="form-check-label" for="null-empty">NULL</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="cfg-null"
+                               id="null-str" value="EmptyAsEmptyString" />
+                        <label class="form-check-label" for="null-str">Empty string</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="cfg-null"
+                               id="null-tok" value="LiteralNullToken" />
+                        <label class="form-check-label" for="null-tok">"NULL"/"\N" token</label>
+                    </div>
+                </div>
+            </div>
+
+            @* Existing data *@
+            <div class="col-md-5">
+                <label class="form-label fw-semibold">Existing data</label>
+                <div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="cfg-exist"
+                               id="exist-append" value="Append" checked />
+                        <label class="form-check-label" for="exist-append">Append rows</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="cfg-exist"
+                               id="exist-trunc" value="TruncateThenInsert" />
+                        <label class="form-check-label text-danger" for="exist-trunc">
+                            Delete all rows first
+                        </label>
+                    </div>
+                </div>
+                <div id="truncate-confirm-panel" class="mt-2 d-none">
+                    <div class="alert alert-danger py-2 mb-1 small">
+                        <strong>Warning:</strong> All existing rows will be deleted before import.
+                        Type the table name to confirm.
+                    </div>
+                    <input id="truncate-confirm-input" type="text"
+                           class="form-control form-control-sm"
+                           placeholder="Type exact table name to confirm…" />
+                </div>
+            </div>
+
+            @* Batch size (SQL Server only) *@
+            <div class="col-md-5" id="batch-size-panel" @(provider == "SqlServer" ? "" : "style=\"display:none\"")>
+                <label class="form-label fw-semibold">
+                    Batch size <span class="text-muted fw-normal">(SQL Server only)</span>
+                </label>
+                <div class="d-flex align-items-center gap-2">
+                    <input id="cfg-batch" type="range" class="form-range"
+                           min="100" max="50000" step="100" value="5000" style="flex:1" />
+                    <span id="cfg-batch-label" class="badge bg-secondary" style="min-width:60px">5,000</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <button id="btn-map" class="btn btn-primary" disabled>
+                Map Columns →
+            </button>
+            <small class="text-muted ms-2" id="map-hint">Select a target table first</small>
+        </div>
+    </div>
+</div>
+
+@* ── Step 2.5: Review inferred CREATE TABLE ─────────────────────── *@
+<div id="step-infer" class="card mb-3 d-none">
+    <div class="card-header fw-semibold">Step 2.5 — Review CREATE TABLE statement</div>
+    <div class="card-body">
+        <p class="text-muted small mb-2">
+            Types were inferred from up to 2,000 sample rows.
+            Adjust types or column names as needed, then click <strong>Create &amp; Import</strong>.
+        </p>
+        <textarea id="infer-sql" class="form-control font-monospace small"
+                  rows="14" spellcheck="false" style="resize:vertical"></textarea>
+        <div id="infer-error" class="alert alert-danger mt-2 d-none small"></div>
+    </div>
+    <div class="card-footer d-flex gap-2 align-items-center">
+        <button id="btn-create-import" class="btn btn-success">
+            Create table &amp; Import &rarr;
+        </button>
+        <div id="create-spinner" class="d-none">
+            <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+            <span class="text-muted small" id="create-elapsed">Running…</span>
+        </div>
+    </div>
+</div>
+
+@* ── Step 3: Map columns ────────────────────────────────────────── *@
+<div id="step-map" class="card mb-3 d-none">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">Step 3 — Map columns</span>
+        <span id="map-validation-msg" class="text-danger small"></span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:30px"></th>
+                        <th>CSV column</th>
+                        <th>Sample value</th>
+                        <th>→ Target column</th>
+                        <th>Type</th>
+                        <th>Nullable</th>
+                    </tr>
+                </thead>
+                <tbody id="map-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer">
+        <button id="btn-preview" class="btn btn-outline-primary" disabled>Preview conversion</button>
+    </div>
+</div>
+
+@* ── Step 4: Preview ────────────────────────────────────────────── *@
+<div id="step-preview" class="card mb-3 d-none">
+    <div class="card-header fw-semibold">Step 4 — Conversion preview (first 20 rows)</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0" id="preview-table">
+                <thead class="table-light"><tr id="preview-head"></tr></thead>
+                <tbody id="preview-body"></tbody>
+            </table>
+        </div>
+        <div id="preview-errors" class="d-none p-3">
+            <div class="alert alert-warning mb-0 small" id="preview-error-list"></div>
+        </div>
+    </div>
+    <div class="card-footer d-flex gap-2 align-items-center">
+        <button id="btn-run" class="btn btn-success">
+            Import &rarr;
+        </button>
+        <div id="run-spinner" class="d-none">
+            <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+            <span class="text-muted small" id="run-elapsed">Running…</span>
+        </div>
+        <div id="abort-warn" class="form-check ms-3">
+            <input class="form-check-input" type="checkbox" id="cfg-abort" />
+            <label class="form-check-label small" for="cfg-abort">
+                Abort &amp; rollback if any rows are rejected
+            </label>
+        </div>
+    </div>
+</div>
+
+@* ── Result panel ───────────────────────────────────────────────── *@
+<div id="step-result" class="card d-none">
+    <div class="card-header fw-semibold" id="result-heading">Import result</div>
+    <div class="card-body">
+        <div class="row g-3 mb-3" id="result-metrics"></div>
+
+        <div id="result-message" class="alert alert-info d-none small"></div>
+
+        <div id="result-errors-panel" class="d-none">
+            <h6>Row errors (first 100)</h6>
+            <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+                <table class="table table-sm table-hover">
+                    <thead class="table-light">
+                        <tr><th>#</th><th>Error</th><th>CSV line</th></tr>
+                    </thead>
+                    <tbody id="result-errors-body"></tbody>
+                </table>
+            </div>
+            <button id="btn-download-errors" class="btn btn-sm btn-outline-secondary mt-2">
+                Download errors as CSV
+            </button>
+        </div>
+    </div>
+    <div class="card-footer">
+        <button id="btn-restart" class="btn btn-outline-primary">Start another import</button>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/import-wizard.js" asp-append-version="true"></script>
+}

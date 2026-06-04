@@ -1,0 +1,58 @@
+@model DBMonitor.Controllers.SearchResultsVm
+@{
+    ViewData["Title"] = "Search: " + Model.Query;
+}
+
+<h2 class="mb-3">Results for <em>@Model.Query</em></h2>
+
+@if (!Model.Profiles.Any() && !Model.SavedQueries.Any() && !Model.History.Any())
+{
+    <div class="text-center py-5 text-muted">No results found.</div>
+}
+
+@if (Model.Profiles.Any())
+{
+    <h5 class="mb-2">Connections</h5>
+    <ul class="list-group mb-4">
+        @foreach (var h in Model.Profiles)
+        {
+            <li class="list-group-item">
+                <a href="@h.Url" class="fw-semibold text-decoration-none">@h.Title</a>
+            </li>
+        }
+    </ul>
+}
+
+@if (Model.SavedQueries.Any())
+{
+    <h5 class="mb-2">Saved Queries</h5>
+    <ul class="list-group mb-4">
+        @foreach (var h in Model.SavedQueries)
+        {
+            <li class="list-group-item">
+                <a href="@h.Url" class="fw-semibold text-decoration-none">@h.Title</a>
+                @if (!string.IsNullOrWhiteSpace(h.Subtitle))
+                {
+                    <span class="text-muted small ms-2">@h.Subtitle</span>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@if (Model.History.Any())
+{
+    <h5 class="mb-2">Query History</h5>
+    <ul class="list-group mb-4">
+        @foreach (var h in Model.History)
+        {
+            <li class="list-group-item">
+                <code class="small">@h.Title</code>
+                @if (!string.IsNullOrWhiteSpace(h.Subtitle))
+                {
+                    <span class="text-muted small ms-2">@h.Subtitle</span>
+                }
+            </li>
+        }
+    </ul>
+}

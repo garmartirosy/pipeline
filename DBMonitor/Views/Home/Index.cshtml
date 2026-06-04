@@ -1,0 +1,72 @@
+@{
+    ViewData["Title"] = "Home";
+    var recent = ViewBag.RecentProfiles as List<DBMonitor.Models.DbConnectionProfile>;
+}
+
+<div class="text-center py-4">
+    <h1 class="display-5 fw-bold mb-1">DBMonitor</h1>
+    <p class="text-muted">Database explorer &amp; SQL runner</p>
+</div>
+
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <div class="row g-3 justify-content-center mb-4">
+        <div class="col-auto">
+            <a asp-controller="Connections" asp-action="Index" class="btn btn-primary btn-lg px-4">
+                Connections
+            </a>
+        </div>
+        <div class="col-auto">
+            <a asp-controller="SavedQueries" asp-action="Index" class="btn btn-outline-primary btn-lg px-4">
+                Saved Queries
+            </a>
+        </div>
+        <div class="col-auto">
+            <a asp-controller="Audit" asp-action="Index" class="btn btn-outline-secondary btn-lg px-4">
+                Activity
+            </a>
+        </div>
+    </div>
+
+    @if (recent is { Count: > 0 })
+    {
+        <div class="row justify-content-center">
+            <div class="col-lg-7">
+                <h5 class="mb-3 text-muted fw-semibold">Recently used</h5>
+                <div class="list-group">
+                    @foreach (var p in recent)
+                    {
+                        <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-semibold">@p.Name</span>
+                                <span class="badge bg-secondary ms-2">@p.Provider</span>
+                            </div>
+                            <div class="d-flex gap-1">
+                                <a asp-controller="Schema" asp-action="Browse" asp-route-profileId="@p.Id"
+                                   class="btn btn-sm btn-success">Browse</a>
+                                <a asp-controller="Sql" asp-action="Editor" asp-route-profileId="@p.Id"
+                                   class="btn btn-sm btn-outline-success">SQL</a>
+                                <a asp-controller="Import" asp-action="Start" asp-route-profileId="@p.Id"
+                                   class="btn btn-sm btn-outline-info">Import</a>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center text-muted py-3">
+            <p>No connections used yet. <a asp-controller="Connections" asp-action="Create">Add one to get started.</a></p>
+        </div>
+    }
+}
+else
+{
+    <div class="text-center py-3">
+        <p class="text-muted mb-3">Sign in to manage your database connections.</p>
+        <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-primary">Sign in</a>
+        <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-outline-primary ms-2">Register</a>
+    </div>
+}

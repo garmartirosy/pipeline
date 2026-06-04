@@ -1,0 +1,216 @@
+/* ============================================================
+   DBMonitor — Site-specific styles
+   App component styles that sit on top of theme.css.
+   ============================================================ */
+
+/* ── Connections list ─────────────────────────────────────────── */
+
+.pin-btn {
+    font-size: 1.1rem;
+    border: none;
+    background: none;
+    padding: 0;
+    line-height: 1;
+    cursor: pointer;
+}
+.pin-active   { color: #f59e0b; }
+.pin-inactive { color: #ccc; }
+.pin-inactive:hover { color: #f59e0b; }
+
+/* ── Random insert page ───────────────────────────────────────── */
+
+.random-card { max-width: 520px; }
+
+/* ── Schema Browser ───────────────────────────────────────────── */
+
+#schema-browser {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-light) !important;
+    box-shadow: var(--shadow-sm);
+    background: var(--card-bg);
+    overflow: hidden;
+}
+
+.sidebar-section-header {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: #888;
+    background: var(--bg-toolbar);
+    border-bottom: 1px solid var(--border-light);
+    cursor: pointer;
+    transition: background .15s;
+    padding: 9px 12px !important;
+}
+
+.sidebar-section-header:hover {
+    background: var(--bg-header);
+}
+
+.sidebar-item {
+    font-size: 13px;
+    color: var(--text-main);
+    padding: 6px 16px !important;
+    transition: background .15s, color .15s;
+    border-left: 3px solid transparent;
+}
+
+.sidebar-item:hover {
+    background: rgba(8,73,117,.06);
+    color: var(--blue);
+    text-decoration: none;
+    border-left-color: var(--blue);
+}
+
+.sidebar-item.active {
+    background: rgba(8,73,117,.10);
+    color: var(--blue);
+    font-weight: 600;
+    border-left-color: var(--blue);
+}
+
+/* Schema sidebar in SQL editor */
+.schema-item {
+    font-size: 12px;
+    color: var(--text-main);
+    padding: 5px 14px !important;
+    transition: background .15s, color .15s;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.schema-item:hover {
+    background: rgba(8,73,117,.06);
+    color: var(--blue);
+    text-decoration: none;
+}
+
+.schema-group > div:first-child {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+/* ── SQL Editor ───────────────────────────────────────────────── */
+
+#sql-editor {
+    font-size: 13px;
+    line-height: 1.6;
+    resize: vertical;
+    background: #fafbfc;
+    border-color: var(--border-medium);
+    border-radius: var(--radius-md);
+    color: #222;
+}
+
+#sql-editor:focus {
+    background: #fff;
+    border-color: var(--blue);
+}
+
+/* Kbd shortcut chip */
+kbd {
+    display: inline-block;
+    background: var(--bg-header);
+    border: 1px solid var(--border-medium);
+    border-radius: 5px;
+    padding: 1px 6px;
+    font-size: 11px;
+    color: #666;
+    font-family: inherit;
+}
+
+/* History panel entries */
+.history-entry {
+    transition: background .15s;
+}
+
+.history-entry:hover {
+    background: rgba(8,73,117,.05);
+}
+
+/* ── Data Grid ────────────────────────────────────────────────── */
+
+#grid-wrap {
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+}
+
+#data-table thead th {
+    background: var(--bg-toolbar);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+#data-table thead th:hover {
+    background: var(--bg-header);
+}
+
+/* ── Parameter form (Procedure runner) ────────────────────────── */
+
+.param-row {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.param-row:last-child { border-bottom: none; }
+
+/* Disabled parameter input (output-only params) */
+.param-value:disabled {
+    background: var(--bg-header);
+    color: var(--text-light);
+    font-style: italic;
+}
+
+/* ── Output params panel ──────────────────────────────────────── */
+
+#output-params-panel {
+    background: var(--bg-toolbar);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+}
+
+/* ── Connections list ─────────────────────────────────────────── */
+
+.table-hover > tbody > tr.connection-row:hover {
+    background: rgba(8,73,117,.04);
+}
+
+/* ── Page header util ─────────────────────────────────────────── */
+
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* ── Filters bar ──────────────────────────────────────────────── */
+
+#filter-area .d-flex {
+    background: var(--bg-toolbar);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 8px 12px;
+}
+
+/* ── Alert + error panels ─────────────────────────────────────── */
+
+#exec-error, #grid-error {
+    border-radius: var(--radius-md);
+}
+
+/* ── Loading spinner text ─────────────────────────────────────── */
+
+#grid-loading, .text-center.text-muted.py-4 {
+    color: var(--text-light) !important;
+    font-size: 14px;
+}

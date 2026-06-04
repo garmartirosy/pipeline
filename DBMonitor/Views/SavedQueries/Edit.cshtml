@@ -1,0 +1,29 @@
+@model DBMonitor.Models.SavedQuery
+@{
+    ViewData["Title"] = "Edit Saved Query";
+}
+
+<h2 class="mb-3">Edit Saved Query</h2>
+
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="ProfileId" />
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label fw-semibold"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger small"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Description" class="form-label fw-semibold"></label>
+        <input asp-for="Description" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label asp-for="Sql" class="form-label fw-semibold">SQL</label>
+        <textarea asp-for="Sql" class="form-control font-monospace" rows="10" spellcheck="false"></textarea>
+        <span asp-validation-for="Sql" class="text-danger small"></span>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Save changes</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>

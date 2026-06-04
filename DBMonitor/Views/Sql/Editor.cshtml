@@ -1,0 +1,159 @@
+@model DBMonitor.Models.ViewModels.BrowseVm
+@{
+    ViewData["Title"] = Model.ProfileName + " — SQL Editor";
+    Layout = "_Layout";
+    var preFillSql = TempData["PreFillSql"] as string;
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Connections" asp-action="Index">Connections</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Schema" asp-action="Browse" asp-route-profileId="@Model.ProfileId">@Model.ProfileName</a></li>
+        <li class="breadcrumb-item active">SQL Editor</li>
+    </ol>
+</nav>
+
+<div class="d-flex gap-2 align-items-center mb-2 flex-wrap">
+    <h2 class="mb-0 h4">
+        <span class="badge bg-secondary me-1">@Model.Provider</span>@Model.ProfileName
+    </h2>
+    <span id="exec-badge" class="badge bg-light text-dark border d-none"></span>
+    <span id="rows-badge" class="badge bg-light text-dark border d-none"></span>
+</div>
+
+@* ── Three-column layout ──────────────────────────────────────────────────── *@
+<div class="d-flex gap-2" style="min-height:75vh;">
+
+    @* Schema sidebar *@
+    <div class="border rounded bg-light d-flex flex-column" style="width:220px;min-width:220px;">
+        <div class="p-2 border-bottom small fw-semibold text-muted">Schema</div>
+        <input id="schema-search" type="search" class="form-control form-control-sm border-0 border-bottom rounded-0"
+               placeholder="Filter…" autocomplete="off" />
+        <div id="schema-sidebar" class="flex-grow-1 overflow-auto small">
+            <div class="text-center text-muted py-3 small">Loading…</div>
+        </div>
+    </div>
+
+    @* Editor + Results *@
+    <div class="flex-grow-1 d-flex flex-column gap-2 min-w-0">
+
+        @* Toolbar *@
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <button id="btn-run" class="btn btn-sm btn-primary">&#9654; Run <kbd class="ms-1 small">Ctrl+Enter</kbd></button>
+            <button id="btn-save-query" class="btn btn-sm btn-outline-secondary" title="Save current SQL">&#128190; Save query</button>
+            <label class="d-flex align-items-center gap-1 small">
+                Timeout
+                <input id="txt-timeout" type="number" class="form-control form-control-sm" style="width:65px" value="30" min="1" max="300" />
+                s
+            </label>
+            <label class="d-flex align-items-center gap-1 small">
+                Max rows
+                <select id="sel-maxrows" class="form-select form-select-sm" style="width:auto">
+                    <option value="100">100</option>
+                    <option value="500">500</option>
+                    <option value="1000" selected>1 000</option>
+                    <option value="5000">5 000</option>
+                    <option value="10000">10 000</option>
+                </select>
+            </label>
+            <div class="form-check mb-0 ms-1">
+                <input class="form-check-input" type="checkbox" id="chk-destructive" />
+                <label class="form-check-label small text-danger fw-semibold" for="chk-destructive">Allow destructive</label>
+            </div>
+        </div>
+
+        @* SQL textarea *@
+        <textarea id="sql-editor"
+                  class="form-control font-monospace"
+                  rows="10"
+                  spellcheck="false"
+                  placeholder="-- Enter SQL here&#10;-- Ctrl+Enter to run">@(preFillSql ?? "")</textarea>
+
+        @* Status / error *@
+        <div id="exec-error" class="alert alert-danger d-none mb-0"></div>
+        <div id="exec-info"  class="alert alert-warning d-none mb-0 small"></div>
+
+        @* Results tabs *@
+        <div id="results-area" class="d-none flex-grow-1 d-flex flex-column">
+            <ul id="result-tabs" class="nav nav-tabs" role="tablist"></ul>
+            <div id="result-panels" class="tab-content border border-top-0 rounded-bottom flex-grow-1 overflow-auto" style="max-height:40vh;"></div>
+        </div>
+
+    </div>
+
+    @* History / Saved panel *@
+    <div class="border rounded bg-light d-flex flex-column" style="width:240px;min-width:240px;">
+        <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" id="tab-history" class="btn btn-outline-secondary active">History</button>
+                <button type="button" id="tab-saved"   class="btn btn-outline-secondary">Saved</button>
+            </div>
+            <button id="btn-clear-history" class="btn btn-sm btn-link p-0 small text-danger">Clear</button>
+        </div>
+        <div id="history-list" class="flex-grow-1 overflow-auto small">
+            <div class="text-center text-muted py-3 small">Loading…</div>
+        </div>
+        <div id="saved-list" class="flex-grow-1 overflow-auto small d-none">
+            <div class="text-center text-muted py-3 small">Loading…</div>
+        </div>
+    </div>
+
+</div>
+
+@* ── Save query modal ─────────────────────────────────────────────────────── *@
+<div class="modal fade" id="save-modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Save Query</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                    <input type="text" id="save-name" class="form-control" placeholder="My query name" maxlength="100" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Description</label>
+                    <input type="text" id="save-desc" class="form-control" placeholder="Optional" maxlength="500" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Scope</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="save-scope" id="scope-profile" value="profile" checked />
+                        <label class="form-check-label" for="scope-profile">This connection only</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="save-scope" id="scope-global" value="global" />
+                        <label class="form-check-label" for="scope-global">Global (all connections)</label>
+                    </div>
+                </div>
+                <div id="save-error" class="alert alert-danger d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="btn-save-confirm" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Anti-forgery token *@
+<div hidden>@Html.AntiForgeryToken()</div>
+
+@section Scripts {
+    <script>
+        window.__sqlCtx = {
+            profileId:    '@Model.ProfileId',
+            provider:     '@Model.Provider',
+            executeUrl:   '@Url.Action("Execute", "Sql", new { profileId = Model.ProfileId })',
+            historyUrl:   '@Url.Action("History", "Sql", new { profileId = Model.ProfileId })',
+            objectsUrl:   '@Url.Action("Objects", "Schema", new { profileId = Model.ProfileId })',
+            savedListUrl: '@Url.Action("List", "SavedQueries", new { profileId = Model.ProfileId })',
+            saveUrl:      '@Url.Action("Save", "SavedQueries")',
+            markUsedUrl:  '@Url.Action("MarkUsed", "SavedQueries")',
+        };
+    </script>
+    <script src="~/js/result-grid.js" asp-append-version="true"></script>
+    <script src="~/js/sql-editor.js" asp-append-version="true"></script>
+}

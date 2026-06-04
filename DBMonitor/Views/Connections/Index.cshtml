@@ -1,0 +1,76 @@
+@model IEnumerable<DBMonitor.Models.DbConnectionProfile>
+@{
+    ViewData["Title"] = "Connections";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Connections</h2>
+    <a asp-action="Create" class="btn btn-primary">+ New Connection</a>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="text-center py-5 text-muted">
+        <p class="fs-4 mb-2">No connections yet.</p>
+        <p class="mb-3 small">Add a SQL Server or PostgreSQL connection to get started.</p>
+        <a asp-action="Create" class="btn btn-primary">Create your first connection</a>
+    </div>
+}
+else
+{
+    <table class="table table-hover align-middle" id="connections-table">
+        <thead class="table-light">
+            <tr>
+                <th style="width:24px"></th>  @* drag handle *@
+                <th style="width:32px"></th>  @* pin *@
+                <th>Name</th>
+                <th>Provider</th>
+                <th>Created</th>
+                <th>Last Used</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="sortable-connections">
+            @foreach (var p in Model)
+            {
+                <tr data-id="@p.Id">
+                    <td class="text-muted drag-handle" style="cursor:grab" title="Drag to reorder">⣿</td>
+                    <td>
+                        <button class="pin-btn @(p.IsPinned ? "pin-active" : "pin-inactive")"
+                                data-id="@p.Id"
+                                data-pinned="@p.IsPinned.ToString().ToLower()"
+                                aria-label="@(p.IsPinned ? "Unpin" : "Pin")"
+                                title="@(p.IsPinned ? "Unpin" : "Pin")">
+                            ★
+                        </button>
+                    </td>
+                    <td class="fw-semibold">@p.Name</td>
+                    <td><span class="badge bg-secondary">@p.Provider</span></td>
+                    <td class="text-muted small">@p.CreatedUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td class="text-muted small">@(p.LastUsedUtc.HasValue ? p.LastUsedUtc.Value.ToString("yyyy-MM-dd HH:mm") + " UTC" : "—")</td>
+                    <td class="text-end">
+                        <a asp-controller="Schema" asp-action="Browse"  asp-route-profileId="@p.Id" class="btn btn-sm btn-success">Browse</a>
+                        <a asp-controller="Sql"    asp-action="Editor"  asp-route-profileId="@p.Id" class="btn btn-sm btn-outline-success">SQL</a>
+                        <a asp-controller="Import" asp-action="Start"   asp-route-profileId="@p.Id" class="btn btn-sm btn-outline-info">Import CSV</a>
+                        <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-outline-secondary">Details</a>
+                        <a asp-action="Edit"    asp-route-id="@p.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                        <a asp-action="Delete"  asp-route-id="@p.Id" class="btn btn-sm btn-outline-danger">Delete</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<div hidden>@Html.AntiForgeryToken()</div>
+
+@section Scripts {
+    <script src="~/js/connections.js" asp-append-version="true"></script>
+    <script>
+        window.__connectionsCtx = {
+            togglePinUrl: '@Url.Action("TogglePin", "Connections")',
+            reorderUrl:   '@Url.Action("Reorder", "Connections")',
+            csrfToken:    document.querySelector('input[name="__RequestVerificationToken"]').value,
+        };
+    </script>
+}

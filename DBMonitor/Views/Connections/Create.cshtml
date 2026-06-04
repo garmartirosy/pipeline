@@ -1,0 +1,88 @@
+@model DBMonitor.Models.ViewModels.ConnectionProfileFormVm
+@{
+    ViewData["Title"] = "New Connection";
+}
+
+<h2 class="mb-4">New Connection</h2>
+
+<div class="row">
+    <div class="col-md-8 col-lg-6">
+        <form id="connection-form" asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger d-none" role="alert"></div>
+
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label fw-semibold"></label>
+                <input asp-for="Name" class="form-control" autocomplete="off" />
+                <span asp-validation-for="Name" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Provider" class="form-label fw-semibold"></label>
+                <select asp-for="Provider"
+                        asp-items="Html.GetEnumSelectList<DBMonitor.Models.DbProviderKind>()"
+                        class="form-select"></select>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="ConnectionString" class="form-label fw-semibold"></label>
+                <textarea asp-for="ConnectionString" class="form-control font-monospace" rows="4"
+                          placeholder="Server=.;Database=mydb;User Id=sa;Password=…;TrustServerCertificate=True;"></textarea>
+                <span asp-validation-for="ConnectionString" class="text-danger small"></span>
+            </div>
+
+            <div id="test-result" class="alert d-none mb-3" role="alert"></div>
+
+            <div class="d-flex gap-2 flex-wrap">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <button type="button" id="btn-test" class="btn btn-outline-secondary">Test Connection</button>
+                <a asp-action="Index" class="btn btn-link text-decoration-none">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const form = document.getElementById('connection-form');
+            const resultEl = document.getElementById('test-result');
+
+            document.getElementById('btn-test').addEventListener('click', async function () {
+                const token = form.querySelector('input[name="__RequestVerificationToken"]').value;
+                const provider = form.querySelector('select[name="Provider"]').value;
+                const connectionString = form.querySelector('textarea[name="ConnectionString"]').value;
+
+                setTesting(this, true);
+                resultEl.className = 'alert d-none mb-3';
+
+                try {
+                    const resp = await fetch('@Url.Action("TestUnsaved")', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ __RequestVerificationToken: token, provider, connectionString })
+                    });
+                    const data = await resp.json();
+                    showResult(resultEl, data);
+                } catch {
+                    showResult(resultEl, { success: false, errorMessage: 'Request failed. Check your network connection.' });
+                } finally {
+                    setTesting(this, false);
+                }
+            });
+
+            function setTesting(btn, on) {
+                btn.disabled = on;
+                btn.textContent = on ? 'Testing…' : 'Test Connection';
+            }
+
+            function showResult(el, data) {
+                el.className = `alert mb-3 ${data.success ? 'alert-success' : 'alert-danger'}`;
+                el.textContent = data.success
+                    ? `Connected successfully in ${data.elapsedMs} ms.`
+                    : `Failed: ${data.errorMessage}`;
+            }
+        })();
+    </script>
+}

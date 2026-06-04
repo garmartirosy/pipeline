@@ -1,0 +1,80 @@
+@model DBMonitor.Models.ViewModels.TableDataVm
+@{
+    ViewData["Title"] = Model.Schema + "." + Model.Table + " — Data";
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a asp-controller="Connections" asp-action="Index">Connections</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a asp-controller="Schema" asp-action="Browse" asp-route-profileId="@Model.ProfileId">@Model.ProfileName</a>
+        </li>
+        <li class="breadcrumb-item active">@(Model.Schema + "." + Model.Table)</li>
+    </ol>
+</nav>
+
+<div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+    <h2 class="mb-0 h4"><code>@(Model.Schema + "." + Model.Table)</code></h2>
+    <span id="row-stats" class="text-muted small"></span>
+    <span id="elapsed-badge" class="badge bg-light text-dark border d-none"></span>
+</div>
+
+@* Toolbar *@
+<div class="d-flex gap-2 align-items-center mb-2 flex-wrap">
+    <label class="d-flex align-items-center gap-1 small">
+        Rows:
+        <select id="page-size-select" class="form-select form-select-sm" style="width:auto">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="250">250</option>
+            <option value="500">500</option>
+        </select>
+    </label>
+    <button id="btn-refresh" class="btn btn-sm btn-outline-secondary">Refresh</button>
+    <button id="btn-add-filter" class="btn btn-sm btn-outline-primary">+ Add filter</button>
+    <div class="ms-auto d-flex gap-1">
+        <button id="btn-copy-tsv" class="btn btn-sm btn-outline-secondary">Copy as TSV</button>
+        <button id="btn-export-csv" class="btn btn-sm btn-outline-secondary">Export CSV</button>
+    </div>
+</div>
+<div class="text-muted small mb-1" id="export-note" style="display:none">Exports current page only.</div>
+
+@* Filter rows (populated by JS) *@
+<div id="filter-area" class="mb-2"></div>
+
+@* Grid *@
+<div id="grid-loading" class="text-center text-muted py-4 d-none">Loading…</div>
+<div id="grid-error"   class="alert alert-danger d-none"></div>
+<div id="grid-wrap"    class="table-responsive" style="max-height:60vh; overflow-y:auto;">
+    <table id="data-table" class="table table-sm table-hover mb-0" style="min-width:600px">
+        <thead id="data-thead" class="table-light sticky-top"></thead>
+        <tbody id="data-tbody"></tbody>
+    </table>
+</div>
+
+@* Pagination *@
+<div id="pagination-bar" class="d-flex align-items-center gap-2 mt-2 flex-wrap d-none">
+    <button id="btn-first" class="btn btn-sm btn-outline-secondary">&laquo;</button>
+    <button id="btn-prev"  class="btn btn-sm btn-outline-secondary">&lsaquo;</button>
+    <span   id="page-label" class="small text-muted"></span>
+    <button id="btn-next"  class="btn btn-sm btn-outline-secondary">&rsaquo;</button>
+    <button id="btn-last"  class="btn btn-sm btn-outline-secondary">&raquo;</button>
+</div>
+
+@* Anti-forgery token (read by table-data.js) *@
+<div hidden>@Html.AntiForgeryToken()</div>
+
+@section Scripts {
+    <script>
+        window.__tableCtx = {
+            profileId: '@Model.ProfileId',
+            schema:    '@Html.Raw(Model.Schema.Replace("'", "\\'"))',
+            table:     '@Html.Raw(Model.Table.Replace("'", "\\'"))',
+            dataUrl:   '@Url.Action("TableDataJson", "Schema", new { profileId = Model.ProfileId })'
+        };
+    </script>
+    <script src="~/js/table-data.js" asp-append-version="true"></script>
+}

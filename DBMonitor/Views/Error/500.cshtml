@@ -1,0 +1,17 @@
+@{
+    ViewData["Title"] = "Server Error";
+    Layout = "_Layout";
+    var reqId = Activity.Current?.Id ?? Context.TraceIdentifier;
+}
+@using System.Diagnostics
+
+<div class="text-center py-5">
+    <h1 class="display-1 text-muted fw-bold">500</h1>
+    <h2 class="mb-3">Something went wrong</h2>
+    <p class="text-muted mb-4">An unexpected error occurred. Please try again later.</p>
+    @if (!string.IsNullOrEmpty(reqId))
+    {
+        <p class="text-muted small">Request ID: <code>@reqId</code></p>
+    }
+    <a asp-controller="Home" asp-action="Index" class="btn btn-primary">Go Home</a>
+</div>

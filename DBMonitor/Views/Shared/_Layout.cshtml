@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - DBMonitor</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/DBMonitor.styles.css" asp-append-version="true" />
+</head>
+<body>
+
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+}
+
+<header class="top-header">
+
+    <a asp-area="" asp-controller="Home" asp-action="Index" class="brand">
+        <span class="logo-icon">🛢</span>
+        <div class="logo-text"><strong>DB</strong><span>Monitor</span></div>
+    </a>
+
+    <nav class="header-nav d-flex align-items-center">
+        <a asp-area="" asp-controller="Home" asp-action="Index"
+           class="nav-pill @(controller == "Home" ? "active" : "")">Home</a>
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <a asp-area="" asp-controller="Connections" asp-action="Index"
+               class="nav-pill @(controller == "Connections" ? "active" : "")">Connections</a>
+            <a asp-area="" asp-controller="SavedQueries" asp-action="Index"
+               class="nav-pill @(controller == "SavedQueries" ? "active" : "")">Saved</a>
+            <a asp-area="" asp-controller="Audit" asp-action="Index"
+               class="nav-pill @(controller == "Audit" ? "active" : "")">Activity</a>
+            <a asp-area="" asp-controller="Random" asp-action="Index"
+               class="nav-pill @(controller == "Random" ? "active" : "")">Random</a>
+            <a asp-area="" asp-controller="Pipelines" asp-action="Index"
+               class="nav-pill @(controller == "Pipelines" ? "active" : "")">Pipelines</a>
+            <a asp-area="" asp-controller="Settings" asp-action="Index"
+               class="nav-pill @(controller == "Settings" ? "active" : "")">Settings</a>
+            <a asp-area="" asp-controller="Help" asp-action="Quickstart"
+               class="nav-pill @(controller == "Help" ? "active" : "")">Help</a>
+        }
+    </nav>
+
+    <div class="header-actions d-flex align-items-center gap-2">
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <form asp-controller="Search" asp-action="Results" method="get" class="d-flex">
+                <input type="search" name="q" class="form-control form-control-sm"
+                       placeholder="Search…" style="width:160px"
+                       value="@Context.Request.Query["q"]" />
+            </form>
+        }
+        <partial name="_LoginPartial" />
+    </div>
+
+</header>
+
+<div class="app-main">
+    @RenderBody()
+</div>
+
+<footer class="app-footer">
+    <div class="footer-status">
+        <div class="live">
+            <div class="live-dot"></div>
+            <span>DBMonitor</span>
+        </div>
+        <span>&copy; @DateTime.Now.Year &mdash;
+            <a asp-area="" asp-controller="Home" asp-action="Privacy"
+               class="text-decoration-none" style="color:inherit">Privacy</a>
+        </span>
+    </div>
+</footer>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+
+</body>
+</html>

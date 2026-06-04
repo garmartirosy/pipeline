@@ -1,0 +1,33 @@
+@model DBMonitor.Models.DbConnectionProfile
+@{
+    ViewData["Title"] = "Delete Connection";
+}
+
+<h2>Delete Connection</h2>
+
+<div class="alert alert-warning" role="alert">
+    Are you sure you want to delete <strong>@Model.Name</strong>? This cannot be undone.
+</div>
+
+<div class="card mb-4" style="max-width:500px">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Name</dt>
+            <dd class="col-sm-8">@Model.Name</dd>
+
+            <dt class="col-sm-4">Provider</dt>
+            <dd class="col-sm-8"><span class="badge bg-secondary">@Model.Provider</span></dd>
+
+            <dt class="col-sm-4">Created</dt>
+            <dd class="col-sm-8">@Model.CreatedUtc.ToString("yyyy-MM-dd HH:mm") UTC</dd>
+        </dl>
+    </div>
+</div>
+
+<form asp-action="Delete" asp-route-id="@Model.Id" method="post">
+    @Html.AntiForgeryToken()
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-danger">Yes, delete</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>

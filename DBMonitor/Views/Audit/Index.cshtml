@@ -1,0 +1,116 @@
+@model IEnumerable<DBMonitor.Models.QueryAuditEntry>
+@{
+    ViewData["Title"] = "Activity Log";
+    int page       = (int)ViewBag.Page;
+    int totalPages = (int)ViewBag.TotalPages;
+    int total      = (int)ViewBag.TotalCount;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Activity Log <span class="fs-6 text-muted fw-normal">(@total.ToString("N0") entries)</span></h2>
+    <a asp-action="ExportCsv"
+       asp-route-profileId="@ViewBag.ProfileId"
+       asp-route-success="@ViewBag.Success"
+       asp-route-from="@ViewBag.From"
+       asp-route-to="@ViewBag.To"
+       class="btn btn-sm btn-outline-secondary">Export CSV</a>
+</div>
+
+@* Filters *@
+<form method="get" class="d-flex gap-2 align-items-end flex-wrap mb-3">
+    <div>
+        <label class="form-label small mb-1">Connection</label>
+        <select name="profileId" class="form-select form-select-sm">
+            <option value="">All</option>
+            @foreach (var p in (IEnumerable<dynamic>)ViewBag.Profiles)
+            {
+                <option value="@p.Id" selected="@(ViewBag.ProfileId?.ToString() == p.Id.ToString())">@p.Name</option>
+            }
+        </select>
+    </div>
+    <div>
+        <label class="form-label small mb-1">Status</label>
+        <select name="success" class="form-select form-select-sm">
+            <option value="">All</option>
+            <option value="true"  selected="@(ViewBag.Success?.ToString() == "True")">Success</option>
+            <option value="false" selected="@(ViewBag.Success?.ToString() == "False")">Failed</option>
+        </select>
+    </div>
+    <div>
+        <label class="form-label small mb-1">From</label>
+        <input type="date" name="from" class="form-control form-control-sm" value="@ViewBag.From" />
+    </div>
+    <div>
+        <label class="form-label small mb-1">To</label>
+        <input type="date" name="to" class="form-control form-control-sm" value="@ViewBag.To" />
+    </div>
+    <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Clear</a>
+</form>
+
+@if (!Model.Any())
+{
+    <div class="text-center py-5 text-muted">No entries match the current filter.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Time (UTC)</th>
+                    <th>Status</th>
+                    <th>Elapsed</th>
+                    <th>Rows</th>
+                    <th>SQL</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var e in Model)
+                {
+                    var ok  = e.Success && !e.RolledBack;
+                    var cls = ok ? "text-success" : (e.RolledBack ? "text-warning" : "text-danger");
+                    var lbl = ok ? "OK" : (e.RolledBack ? "Rolled back" : "Error");
+                    <tr>
+                        <td class="small text-muted text-nowrap">@e.ExecutedUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td><span class="badge @(ok ? "bg-success" : (e.RolledBack ? "bg-warning text-dark" : "bg-danger"))">@lbl</span></td>
+                        <td class="small">@e.ElapsedMs ms</td>
+                        <td class="small">@(e.RecordsAffected.HasValue ? e.RecordsAffected.Value.ToString("N0") : "—")</td>
+                        <td>
+                            <details>
+                                <summary class="font-monospace small text-truncate" style="max-width:500px;cursor:pointer">
+                                    @(e.Sql.Length > 100 ? e.Sql[..100] + "…" : e.Sql)
+                                </summary>
+                                <pre class="mt-1 small border rounded p-2 bg-light text-wrap" style="white-space:pre-wrap">@e.Sql</pre>
+                                @if (!string.IsNullOrWhiteSpace(e.ErrorMessage))
+                                {
+                                    <div class="alert alert-danger py-1 px-2 small mt-1">@e.ErrorMessage</div>
+                                }
+                            </details>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @* Pagination *@
+    @if (totalPages > 1)
+    {
+        <nav>
+            <ul class="pagination pagination-sm">
+                @for (int i = 1; i <= totalPages; i++)
+                {
+                    <li class="page-item @(i == page ? "active" : "")">
+                        <a class="page-link" asp-action="Index"
+                           asp-route-profileId="@ViewBag.ProfileId"
+                           asp-route-success="@ViewBag.Success"
+                           asp-route-from="@ViewBag.From"
+                           asp-route-to="@ViewBag.To"
+                           asp-route-page="@i">@i</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+}

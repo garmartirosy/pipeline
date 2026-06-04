@@ -1,0 +1,74 @@
+@model DBMonitor.Models.DbConnectionProfile
+@{
+    ViewData["Title"] = "Connection Details";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">@Model.Name</h2>
+    <div class="d-flex gap-2">
+        <a asp-action="Edit"  asp-route-id="@Model.Id" class="btn btn-outline-primary">Edit</a>
+        <a asp-action="Index" class="btn btn-outline-secondary">Back to list</a>
+    </div>
+</div>
+
+<div class="card mb-4" style="max-width:600px">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Provider</dt>
+            <dd class="col-sm-8"><span class="badge bg-secondary">@Model.Provider</span></dd>
+
+            <dt class="col-sm-4">Connection string</dt>
+            <dd class="col-sm-8 text-muted fst-italic">••••••••  (stored encrypted)</dd>
+
+            <dt class="col-sm-4">Created</dt>
+            <dd class="col-sm-8">@Model.CreatedUtc.ToString("yyyy-MM-dd HH:mm") UTC</dd>
+
+            <dt class="col-sm-4">Last used</dt>
+            <dd class="col-sm-8">@(Model.LastUsedUtc.HasValue ? Model.LastUsedUtc.Value.ToString("yyyy-MM-dd HH:mm") + " UTC" : "Never")</dd>
+        </dl>
+    </div>
+</div>
+
+<div id="test-result" class="alert d-none mb-3" role="alert" style="max-width:600px"></div>
+
+<form id="test-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@Model.Id" />
+    <button type="button" id="btn-test" class="btn btn-outline-primary">
+        Test Connection
+    </button>
+</form>
+
+@section Scripts {
+    <script>
+        document.getElementById('btn-test').addEventListener('click', async function () {
+            const form = document.getElementById('test-form');
+            const token = form.querySelector('input[name="__RequestVerificationToken"]').value;
+            const id = form.querySelector('input[name="id"]').value;
+            const resultEl = document.getElementById('test-result');
+
+            this.disabled = true;
+            this.textContent = 'Testing…';
+            resultEl.className = 'alert d-none mb-3';
+
+            try {
+                const resp = await fetch('@Url.Action("TestSaved")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ __RequestVerificationToken: token, id })
+                });
+                const data = await resp.json();
+                resultEl.className = `alert mb-3 ${data.success ? 'alert-success' : 'alert-danger'}`;
+                resultEl.textContent = data.success
+                    ? `Connected successfully in ${data.elapsedMs} ms.`
+                    : `Failed: ${data.errorMessage}`;
+            } catch {
+                resultEl.className = 'alert alert-danger mb-3';
+                resultEl.textContent = 'Request failed. Check your network connection.';
+            } finally {
+                this.disabled = false;
+                this.textContent = 'Test Connection';
+            }
+        });
+    </script>
+}

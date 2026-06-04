@@ -1,0 +1,46 @@
+## .NET / ASP.NET Core
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.userprefs
+
+## EF Core migrations snapshot (keep .cs migrations, ignore the auto-generated designer files if preferred — commented out by default)
+# **/Migrations/*.Designer.cs
+
+## Published output
+publish/
+out/
+
+## Secrets / config overrides
+secrets.json
+*.pfx
+
+## Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+PythonScripts/*.egg-info/
+
+## Logs & temp
+*.log
+*.tmp
+Logs/
+
+## Docker
+.dockerignore
+
+## OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## Rider / JetBrains
+.idea/
+
+## VS Code
+.vscode/

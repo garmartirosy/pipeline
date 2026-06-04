@@ -1,0 +1,137 @@
+@model DBMonitor.Models.ViewModels.BrowseVm
+@{
+    ViewData["Title"] = Model.ProfileName + " — Schema";
+    Layout = "_Layout";
+    var providerStr = Model.Provider.ToString();
+}
+
+<style>
+    /* ── Layout ─────────────────────────────────────────── */
+    #schema-browser { min-height: 78vh; overflow: hidden; }
+
+    /* ── Sidebar ─────────────────────────────────────────── */
+    #sidebar { width: 280px; min-width: 160px; max-width: 520px; }
+
+    #resize-handle {
+        width: 5px; cursor: col-resize; background: transparent;
+        flex-shrink: 0;
+    }
+    #resize-handle:hover, #resize-handle.dragging { background: var(--blue, #084975); opacity: .35; }
+
+    .sidebar-section-header {
+        cursor: pointer; font-size: .8rem; font-weight: 600;
+        padding: .35rem .6rem; user-select: none;
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+    .sidebar-section-header:hover { background: rgba(0,0,0,.04); }
+
+    .schema-group-label {
+        font-size: .7rem; font-weight: 600; color: #888;
+        padding: .25rem .75rem .1rem;
+        letter-spacing: .04em; text-transform: uppercase;
+    }
+
+    .sidebar-item {
+        display: block; padding: .22rem .75rem .22rem 2rem;
+        font-size: .82rem; text-decoration: none;
+        color: var(--bs-body-color); white-space: nowrap; overflow: hidden;
+        text-overflow: ellipsis; border-radius: 0;
+    }
+    .sidebar-item:hover  { background: rgba(0,0,0,.05); color: var(--bs-body-color); }
+    .sidebar-item.active { background: var(--blue, #084975); color: #fff !important; }
+
+    /* Type icon chips */
+    .obj-icon {
+        display: inline-block; font-size: .6rem; font-weight: 700;
+        border-radius: 3px; padding: 0 3px; margin-right: 5px;
+        vertical-align: middle; line-height: 1.6; letter-spacing: 0;
+    }
+    .obj-icon-table { background: #d1fae5; color: #065f46; }
+    .obj-icon-view  { background: #dbeafe; color: #1e40af; }
+    .obj-icon-proc  { background: #ede9fe; color: #5b21b6; }
+    .obj-icon-func  { background: #fef3c7; color: #92400e; }
+
+    /* ── Main pane ───────────────────────────────────────── */
+    #main-pane { font-size: .88rem; }
+
+    .col-badge {
+        display: inline-block; font-size: .6rem; font-weight: 700;
+        border-radius: 3px; padding: 1px 4px; margin-right: 2px;
+        vertical-align: middle; letter-spacing: .02em;
+    }
+    .badge-pk       { background: #fef08a; color: #713f12; }
+    .badge-identity { background: #bfdbfe; color: #1e3a8a; }
+    .badge-computed { background: #e9d5ff; color: #4c1d95; }
+
+    .copy-col-name {
+        cursor: pointer; opacity: 0; transition: opacity .15s;
+        font-size: .7rem; color: #888; margin-left: 4px;
+    }
+    tr:hover .copy-col-name { opacity: 1; }
+
+    .quick-sql-bar { display: flex; gap: .5rem; flex-wrap: wrap; }
+    .quick-sql-btn {
+        font-size: .75rem; padding: .2rem .55rem;
+        border: 1px solid var(--bs-border-color);
+        border-radius: 4px; cursor: pointer; background: var(--bs-light);
+    }
+    .quick-sql-btn:hover { background: #e2e8f0; }
+
+    .def-block {
+        font-size: .78rem; line-height: 1.55; background: #f8f9fa;
+        border: 1px solid var(--bs-border-color); border-radius: 6px;
+        padding: 1rem; overflow: auto; max-height: 55vh;
+        white-space: pre;
+    }
+
+    #kb-hint {
+        font-size: .68rem; color: #aaa; padding: .2rem .6rem;
+        border-top: 1px solid var(--bs-border-color);
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0 h4">
+        <span class="badge bg-secondary me-2">@providerStr</span>@Model.ProfileName
+    </h2>
+    <div class="d-flex gap-2">
+        <a asp-controller="Sql"    asp-action="Editor" asp-route-profileId="@Model.ProfileId"
+           class="btn btn-sm btn-outline-primary">SQL Editor</a>
+        <a asp-controller="Import" asp-action="Start" asp-route-profileId="@Model.ProfileId"
+           class="btn btn-sm btn-outline-info">Import CSV</a>
+        <a asp-controller="Connections" asp-action="Index"
+           class="btn btn-sm btn-outline-secondary">&larr; Connections</a>
+    </div>
+</div>
+
+<div id="schema-browser"
+     data-profile-id="@Model.ProfileId"
+     data-provider="@providerStr"
+     class="d-flex border rounded">
+
+    <!-- Sidebar -->
+    <div id="sidebar" class="border-end bg-light d-flex flex-column">
+        <div class="p-2 border-bottom">
+            <input id="sidebar-search" type="search" class="form-control form-control-sm"
+                   placeholder="Filter objects…" autocomplete="off" />
+        </div>
+        <div id="sidebar-content" class="flex-grow-1 overflow-auto">
+            <div class="text-center text-muted py-4 small">Loading…</div>
+        </div>
+        <div id="kb-hint">↑ ↓ navigate &nbsp;·&nbsp; Enter select</div>
+    </div>
+
+    <!-- Resize handle -->
+    <div id="resize-handle"></div>
+
+    <!-- Main pane -->
+    <div id="main-pane" class="flex-grow-1 overflow-auto p-3">
+        <div class="text-muted text-center py-5">
+            Select a table, view, or routine from the sidebar.
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/schema-browser.js" asp-append-version="true"></script>
+}
