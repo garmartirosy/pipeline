@@ -17,7 +17,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 // ── Identity ──────────────────────────────────────────────────────────────────
-builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient();
@@ -113,6 +113,8 @@ static async Task SeedDefaultConnectionsAsync(WebApplication app)
     await using var scope = app.Services.CreateAsyncScope();
     var db        = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var protector = scope.ServiceProvider.GetRequiredService<IConnectionStringProtector>();
+
+    await db.Database.MigrateAsync();
 
     foreach (var def in defaults)
     {
