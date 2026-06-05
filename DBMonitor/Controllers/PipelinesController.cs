@@ -70,11 +70,18 @@ public partial class PipelinesController : Controller
         if (pythonExe is null)
             return Json(new { success = false, output = "Python is not installed or not on PATH." });
 
+        var outputParts = new List<string>();
+
+        var ensureOutput = await EnsurePipAsync(pythonExe, ct);
+        if (!string.IsNullOrEmpty(ensureOutput))
+            outputParts.Add(ensureOutput);
+
         var pkgList = string.Join(" ", packages.Select(p => $"\"{p}\""));
         var (stdout, stderr, exitCode) = await RunProcessAsync(pythonExe, $"-m pip install {pkgList}", ct);
-        var output = string.Concat(stdout, stderr.Length > 0 ? "\n" + stderr : "").Trim();
+        var installOutput = string.Concat(stdout, stderr.Length > 0 ? "\n" + stderr : "").Trim();
+        outputParts.Add(installOutput);
 
-        return Json(new { success = exitCode == 0, output });
+        return Json(new { success = exitCode == 0, output = string.Join("\n", outputParts).Trim() });
     }
 
     // ── Run pipeline script with caller-supplied arguments ────────────────────
@@ -111,6 +118,10 @@ public partial class PipelinesController : Controller
 
             if (packages.Count > 0)
             {
+                var ensureOutput = await EnsurePipAsync(pythonExe, ct);
+                if (!string.IsNullOrEmpty(ensureOutput))
+                    outputParts.Add($"[ensurepip]\n{ensureOutput}");
+
                 var pkgList = string.Join(" ", packages.Select(p => $"\"{p}\""));
                 var (pipOut, pipErr, pipCode) = await RunProcessAsync(
                     pythonExe, $"-m pip install {pkgList}", ct);
@@ -148,6 +159,12 @@ public partial class PipelinesController : Controller
     }
 
     // ── Process helpers ───────────────────────────────────────────────────────
+
+    private static async Task<string> EnsurePipAsync(string pythonExe, CancellationToken ct)
+    {
+        var (stdout, stderr, _) = await RunProcessAsync(pythonExe, "-m ensurepip --upgrade", ct);
+        return string.Concat(stdout, stderr.Length > 0 ? "\n" + stderr : "").Trim();
+    }
 
     private static string? FindPythonExe()
     {

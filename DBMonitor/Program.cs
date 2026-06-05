@@ -7,6 +7,9 @@ using DBMonitor.Services.Schema;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
+// Load .env for local development. On Azure, App Settings supply the same vars.
+DotNetEnv.Env.TraversePath().Load();
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -103,9 +106,11 @@ static async Task SeedDefaultConnectionsAsync(WebApplication app)
             Id               = new Guid("00000000-0000-0000-0000-000000000001"),
             Name             = "IndustryDB (Azure PostgreSQL)",
             Provider         = DbProviderKind.PostgreSql,
-            PlaintextConnStr = "Host=modelearth-postgres-server.postgres.database.azure.com;" +
-                               "Database=industrydb;Username=postgresadmin;" +
-                               "Password=ModelEarth11!!;Port=5432;" +
+            PlaintextConnStr = $"Host={app.Configuration["POSTGRES_HOST"]};" +
+                               $"Database={app.Configuration["POSTGRES_DB"]};" +
+                               $"Username={app.Configuration["POSTGRES_USER"]};" +
+                               $"Password={app.Configuration["POSTGRES_PASSWORD"]};" +
+                               $"Port={app.Configuration["POSTGRES_PORT"] ?? "5432"};" +
                                "SSL Mode=Require;Trust Server Certificate=true",
         },
     };

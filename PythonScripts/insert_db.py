@@ -1,13 +1,17 @@
-import psycopg2
+import os
 import random
 import string
 
-DB_HOST     = "modelearth-postgres-server.postgres.database.azure.com"
-DB_NAME     = "industrydb"
-DB_USER     = "postgresadmin"
-DB_PASSWORD = "ModelEarth11!!"
-DB_PORT     = 5432
-##############################
+import psycopg2
+from dotenv import find_dotenv, load_dotenv
+
+load_dotenv(find_dotenv())
+
+DB_HOST     = os.environ["POSTGRES_HOST"]
+DB_NAME     = os.environ["POSTGRES_DB"]
+DB_USER     = os.environ["POSTGRES_USER"]
+DB_PASSWORD = os.environ["POSTGRES_PASSWORD"]
+DB_PORT     = int(os.getenv("POSTGRES_PORT", "5432"))
 
 def random_name(length: int = 8) -> str:
     first = random.choice(string.ascii_uppercase)
