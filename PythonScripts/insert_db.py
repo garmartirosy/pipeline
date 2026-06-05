@@ -7,7 +7,7 @@ DB_NAME     = "industrydb"
 DB_USER     = "postgresadmin"
 DB_PASSWORD = "ModelEarth11!!"
 DB_PORT     = 5432
-
+##############################
 
 def random_name(length: int = 8) -> str:
     first = random.choice(string.ascii_uppercase)
