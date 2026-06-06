@@ -78,7 +78,7 @@ public partial class PipelinesController : Controller
             outputParts.Add(ensureOutput);
 
         var pkgList = string.Join(" ", packages.Select(p => $"\"{p}\""));
-        var (stdout, stderr, exitCode) = await RunProcessAsync(pythonExe, $"-m pip install {pkgList}", ct);
+        var (stdout, stderr, exitCode) = await RunProcessAsync(pythonExe, $"-m pip install --break-system-packages {pkgList}", ct);
         var installOutput = string.Concat(stdout, stderr.Length > 0 ? "\n" + stderr : "").Trim();
         outputParts.Add(installOutput);
 
@@ -125,7 +125,7 @@ public partial class PipelinesController : Controller
 
                 var pkgList = string.Join(" ", packages.Select(p => $"\"{p}\""));
                 var (pipOut, pipErr, pipCode) = await RunProcessAsync(
-                    pythonExe, $"-m pip install {pkgList}", ct);
+                    pythonExe, $"-m pip install --break-system-packages {pkgList}", ct);
 
                 var pipOutput = string.Concat(pipOut, pipErr.Length > 0 ? "\n" + pipErr : "").Trim();
                 if (!string.IsNullOrEmpty(pipOutput))
