@@ -162,8 +162,19 @@ public partial class PipelinesController : Controller
 
     private static async Task<string> EnsurePipAsync(string pythonExe, CancellationToken ct)
     {
-        var (stdout, stderr, _) = await RunProcessAsync(pythonExe, "-m ensurepip --upgrade", ct);
-        return string.Concat(stdout, stderr.Length > 0 ? "\n" + stderr : "").Trim();
+        // Try the standard bootstrap first
+        var (ensureOut, ensureErr, ensureCode) = await RunProcessAsync(pythonExe, "-m ensurepip --upgrade", ct);
+        if (ensureCode == 0)
+            return string.Concat(ensureOut, ensureErr.Length > 0 ? "\n" + ensureErr : "").Trim();
+
+        // Debian/Ubuntu strips ensurepip from system python3 — install via apt-get instead
+        var (aptOut, aptErr, aptCode) = await RunProcessAsync(
+            "/bin/bash", "-c \"apt-get install -y python3-pip 2>&1\"", ct);
+        var aptOutput = string.Concat(aptOut, aptErr.Length > 0 ? "\n" + aptErr : "").Trim();
+        if (aptCode == 0)
+            return aptOutput;
+
+        return $"[ensurepip] {string.Concat(ensureOut, ensureErr).Trim()}\n[apt-get] {aptOutput}";
     }
 
     private static string? FindPythonExe()
