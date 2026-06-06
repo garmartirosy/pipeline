@@ -12,6 +12,7 @@ public partial class PipelinesController : Controller
 {
     private const string UserAgent       = "DBMonitor/1.0";
     private const int    ScriptTimeoutMs = 60_000;
+    private const int    PipTimeoutMs    = 180_000;
 
     private static readonly HashSet<string> AllowedHosts = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -160,21 +161,35 @@ public partial class PipelinesController : Controller
 
     // ── Process helpers ───────────────────────────────────────────────────────
 
-    private static async Task<string> EnsurePipAsync(string pythonExe, CancellationToken ct)
+    private async Task<string> EnsurePipAsync(string pythonExe, CancellationToken ct)
     {
-        // Try the standard bootstrap first
-        var (ensureOut, ensureErr, ensureCode) = await RunProcessAsync(pythonExe, "-m ensurepip --upgrade", ct);
+        // 1. Standard bootstrap (works on most Python installs)
+        var (ensureOut, ensureErr, ensureCode) = await RunProcessAsync(
+            pythonExe, "-m ensurepip --upgrade", ct, PipTimeoutMs);
         if (ensureCode == 0)
             return string.Concat(ensureOut, ensureErr.Length > 0 ? "\n" + ensureErr : "").Trim();
 
-        // Debian/Ubuntu strips ensurepip from system python3 — install via apt-get instead
+        // 2. Debian/Ubuntu strips ensurepip — refresh index and install python3-pip
         var (aptOut, aptErr, aptCode) = await RunProcessAsync(
-            "/bin/bash", "-c \"apt-get install -y python3-pip 2>&1\"", ct);
-        var aptOutput = string.Concat(aptOut, aptErr.Length > 0 ? "\n" + aptErr : "").Trim();
+            "/bin/bash", "-c \"apt-get update -qq && apt-get install -y python3-pip 2>&1\"", ct, PipTimeoutMs);
         if (aptCode == 0)
-            return aptOutput;
+            return string.Concat(aptOut, aptErr.Length > 0 ? "\n" + aptErr : "").Trim();
 
-        return $"[ensurepip] {string.Concat(ensureOut, ensureErr).Trim()}\n[apt-get] {aptOutput}";
+        // 3. Official PyPA get-pip.py — works on any Python 3 without system packages
+        var getPipPath = Path.Combine(Path.GetTempPath(), "get-pip.py");
+        try
+        {
+            var client = _http.CreateClient();
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
+            var script = await client.GetStringAsync("https://bootstrap.pypa.io/get-pip.py", ct);
+            await System.IO.File.WriteAllTextAsync(getPipPath, script, ct);
+            var (pipOut, pipErr, _) = await RunProcessAsync(pythonExe, getPipPath, ct, PipTimeoutMs);
+            return string.Concat(pipOut, pipErr.Length > 0 ? "\n" + pipErr : "").Trim();
+        }
+        finally
+        {
+            try { System.IO.File.Delete(getPipPath); } catch { }
+        }
     }
 
     private static string? FindPythonExe()
@@ -201,7 +216,7 @@ public partial class PipelinesController : Controller
     }
 
     private static async Task<(string Stdout, string Stderr, int ExitCode)> RunProcessAsync(
-        string exe, string args, CancellationToken ct)
+        string exe, string args, CancellationToken ct, int timeoutMs = ScriptTimeoutMs)
     {
         var psi = new ProcessStartInfo
         {
@@ -214,7 +229,7 @@ public partial class PipelinesController : Controller
         };
 
         using var proc       = Process.Start(psi)!;
-        using var timeoutCts = new CancellationTokenSource(ScriptTimeoutMs);
+        using var timeoutCts = new CancellationTokenSource(timeoutMs);
         using var linkedCts  = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
 
         // Read both streams concurrently to prevent pipe-buffer deadlock
