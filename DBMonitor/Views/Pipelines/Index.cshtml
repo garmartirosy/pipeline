@@ -395,9 +395,11 @@
         const pattern = /No module named ['"]([^'"]+)['"]/g;
         const found   = new Set();
         let m;
+        const binaryOnly = { 'psycopg2': 'psycopg2-binary', 'cv2': 'opencv-python-headless' };
         while ((m = pattern.exec(output)) !== null) {
             // Take only the top-level package name (e.g. "sklearn" from "sklearn.model_selection")
-            found.add(m[1].split('.')[0]);
+            const pkg = m[1].split('.')[0];
+            found.add(binaryOnly[pkg] ?? pkg);
         }
         if (found.size === 0) return;
 
