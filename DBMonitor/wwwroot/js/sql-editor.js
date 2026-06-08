@@ -88,11 +88,43 @@
         loadSaved();
     });
 
+    // ── SQL safety gate ───────────────────────────────────────────────────────
+
+    var HARD_BLOCK = [
+        /\bDROP\s+(TABLE|DATABASE|SCHEMA|VIEW|INDEX|PROCEDURE|FUNCTION)\b/i,
+        /\bTRUNCATE\b/i,
+    ];
+
+    function stripNoise(sql) {
+        return sql
+            .replace(/--[^\n]*/g, ' ')          // single-line comments
+            .replace(/\/\*[\s\S]*?\*\//g, ' ')  // block comments
+            .replace(/'(?:[^'\\]|\\.)*'/g, "''"); // string literals
+    }
+
+    function checkSqlSafety(sql) {
+        var clean = stripNoise(sql);
+        for (var i = 0; i < HARD_BLOCK.length; i++) {
+            var m = clean.match(HARD_BLOCK[i]);
+            if (m) return { keyword: m[0].replace(/\s+/g, ' ').trim() };
+        }
+        return null;
+    }
+
     // ── Execute ───────────────────────────────────────────────────────────────
 
     function runQuery() {
         var sql = elEditor.value.trim();
         if (!sql) { showError('Enter a SQL statement first.'); return; }
+
+        var safety = checkSqlSafety(sql);
+        if (safety) {
+            if (!elDestructive.checked) {
+                showError(safety.keyword + ' detected — check "Allow destructive" to run this statement.');
+                return;
+            }
+            if (!confirm(safety.keyword + ' detected. This cannot be undone.\n\nContinue?')) return;
+        }
 
         setRunning(true);
         clearResults();
