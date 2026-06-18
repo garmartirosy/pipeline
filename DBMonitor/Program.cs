@@ -7,8 +7,27 @@ using DBMonitor.Services.Schema;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-// Load .env for local development. On Azure, App Settings supply the same vars.
-DotNetEnv.Env.TraversePath().Load();
+// Bootstrap config to read GITHUB_CONFIG_TOKEN from env vars, Azure App Settings, or User Secrets.
+var bootstrap = new ConfigurationBuilder()
+    .AddEnvironmentVariables()
+    .AddUserSecrets<Program>(optional: true)
+    .Build();
+
+var githubToken = bootstrap["GITHUB_CONFIG_TOKEN"];
+if (!string.IsNullOrEmpty(githubToken))
+{
+    using var http = new HttpClient();
+    http.DefaultRequestHeaders.UserAgent.ParseAdd("DBMonitor/1.0");
+    http.DefaultRequestHeaders.Authorization =
+        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", githubToken);
+    var envContent = await http.GetStringAsync(
+        "https://raw.githubusercontent.com/garmartirosy/netdev/main/.env");
+    DotNetEnv.Env.LoadContents(envContent);
+}
+else
+{
+    DotNetEnv.Env.TraversePath().Load();
+}
 
 var builder = WebApplication.CreateBuilder(args);
 

@@ -119,11 +119,8 @@
 
         var safety = checkSqlSafety(sql);
         if (safety) {
-            if (!elDestructive.checked) {
-                showError(safety.keyword + ' detected — check "Allow destructive" to run this statement.');
-                return;
-            }
-            if (!confirm(safety.keyword + ' detected. This cannot be undone.\n\nContinue?')) return;
+            showError(safety.keyword + ' detected — this statement is not allowed.');
+            return;
         }
 
         setRunning(true);
