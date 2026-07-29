@@ -214,3 +214,281 @@ kbd {
     color: var(--text-light) !important;
     font-size: 14px;
 }
+
+/* ── Auth pages (Login / Register) ────────────────────────────── */
+/* Scoped via :has() so only pages containing these forms are
+   affected. The Identity UI is unscaffolded, so we reshape the
+   framework markup entirely with CSS:
+       <h1>Register|Log in</h1>
+       <div class="row">
+         <div class="col-md-4"><form id="registerForm|account">...</form></div>
+         <div class="col-md-6"><section>...external logins...</section></div>
+       </div>
+   We fold the row into a single centered card, stack the two
+   columns, and drop an "or continue with" divider between them. */
+
+.app-main:has(#registerForm),
+.app-main:has(#account) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 56px 24px 64px;
+}
+
+/* Page title */
+.app-main:has(#registerForm) > h1,
+.app-main:has(#account) > h1 {
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--blue);
+    letter-spacing: -0.5px;
+    margin: 0;
+    text-align: center;
+}
+
+.app-main:has(#registerForm) > h1::after {
+    content: "Create your DBMonitor account";
+    display: block;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-light);
+    letter-spacing: 0;
+    margin-top: 8px;
+}
+
+.app-main:has(#account) > h1::after {
+    content: "Welcome back — sign in to continue";
+    display: block;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-light);
+    letter-spacing: 0;
+    margin-top: 8px;
+}
+
+/* .row is repurposed as the card */
+.app-main:has(#registerForm) > .row,
+.app-main:has(#account) > .row {
+    width: 100%;
+    max-width: 440px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: 36px 36px 32px;
+    margin: 28px auto 0;
+    display: flex;
+    flex-direction: column;
+    --bs-gutter-x: 0;
+    --bs-gutter-y: 0;
+}
+
+/* Columns collapse into a single stack. Framework's exact column
+   class names vary by version, so target row children directly. */
+.app-main:has(#registerForm) > .row > *,
+.app-main:has(#account) > .row > * {
+    width: 100%;
+    max-width: 100%;
+    flex: 0 0 100%;
+    padding: 0;
+    margin: 0;
+}
+
+/* Google (external logins) column comes first via flex order. */
+.app-main:has(#registerForm) > .row > *:has(#external-account),
+.app-main:has(#account) > .row > *:has(#external-account) {
+    order: 1;
+}
+
+/* Email/password form column comes second. */
+.app-main:has(#registerForm) > .row > *:has(#registerForm),
+.app-main:has(#account) > .row > *:has(#account) {
+    order: 2;
+}
+
+/* Redundant framework headers (h2 "Create a new account.",
+   h3 "Use another service...", section <hr />) */
+.app-main:has(#registerForm) #registerForm > h2,
+.app-main:has(#registerForm) #registerForm > hr,
+.app-main:has(#account) #account > h2,
+.app-main:has(#account) #account > hr,
+.app-main:has(#registerForm) section > h3,
+.app-main:has(#account) section > h3,
+.app-main:has(#registerForm) section > hr,
+.app-main:has(#account) section > hr {
+    display: none;
+}
+
+/* Form-floating input tweaks */
+.app-main:has(#registerForm) .form-floating > .form-control,
+.app-main:has(#account) .form-floating > .form-control {
+    border-radius: var(--radius-md);
+    border-color: var(--border-medium);
+    background: #fafbfc;
+    height: 58px;
+}
+
+.app-main:has(#registerForm) .form-floating > .form-control:focus,
+.app-main:has(#account) .form-floating > .form-control:focus {
+    background: #ffffff;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(8, 73, 117, .12);
+}
+
+.app-main:has(#registerForm) .form-floating > label,
+.app-main:has(#account) .form-floating > label {
+    color: var(--text-light);
+}
+
+/* Primary submit button */
+.app-main:has(#registerForm) #registerForm button[type="submit"],
+.app-main:has(#account) #account button[type="submit"] {
+    padding: 12px 20px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    border-radius: var(--radius-md);
+    box-shadow: 0 2px 6px rgba(8, 73, 117, .18);
+    transition: var(--transition);
+    margin-top: 6px;
+}
+
+.app-main:has(#registerForm) #registerForm button[type="submit"]:hover,
+.app-main:has(#account) #account button[type="submit"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(8, 73, 117, .28);
+}
+
+.app-main:has(#registerForm) #registerForm button[type="submit"]:active,
+.app-main:has(#account) #account button[type="submit"]:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(8, 73, 117, .18);
+}
+
+/* "or continue with email" divider above the email form
+   (which now sits below the Google button). */
+.app-main:has(#registerForm) > .row > *:has(#registerForm),
+.app-main:has(#account) > .row > *:has(#account) {
+    position: relative;
+    padding-top: 28px;
+    margin-top: 28px;
+    border-top: 1px solid var(--border-light);
+}
+
+.app-main:has(#registerForm) > .row > *:has(#registerForm)::before,
+.app-main:has(#account) > .row > *:has(#account)::before {
+    content: "or continue with email";
+    position: absolute;
+    top: -9px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--card-bg);
+    padding: 0 12px;
+    color: var(--text-light);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    white-space: nowrap;
+}
+
+/* Small-screen padding */
+@media (max-width: 520px) {
+    .app-main:has(#registerForm) > .row,
+    .app-main:has(#account) > .row {
+        padding: 24px 20px 22px;
+    }
+    .app-main:has(#registerForm),
+    .app-main:has(#account) {
+        padding: 32px 16px 48px;
+    }
+}
+
+/* ── External login (Google) button ───────────────────────────── */
+/* Targets the default Identity UI external-login form. Uses
+   [name="provider"] so it survives markup tweaks. Inside the auth
+   card it fills the width; outside, it keeps its own min-width. */
+
+#external-account {
+    display: flex;
+    justify-content: center;
+    margin-top: 4px;
+}
+
+#external-account p {
+    margin: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+#external-account button[name="provider"] {
+    background: #ffffff;
+    color: #3c4043;
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-md);
+    padding: 11px 20px;
+    font-weight: 500;
+    font-size: 14px;
+    letter-spacing: .2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-width: 260px;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.app-main:has(#registerForm) #external-account button[name="provider"],
+.app-main:has(#account) #external-account button[name="provider"] {
+    width: 100%;
+    min-width: 0;
+}
+
+#external-account button[name="provider"]::before {
+    content: "";
+    flex: 0 0 18px;
+    width: 18px;
+    height: 18px;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+
+#external-account button[value="Google"]::before {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><path fill='%23FFC107' d='M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z'/><path fill='%23FF3D00' d='M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z'/><path fill='%234CAF50' d='M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z'/><path fill='%231976D2' d='M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z'/></svg>");
+}
+
+/* Prepend "Continue with " to the provider name */
+#external-account button[name="provider"]::after {
+    content: "Continue with " attr(value);
+    order: 2;
+}
+
+/* Hide the raw text node "Google" so only the ::after label shows */
+#external-account button[name="provider"] {
+    font-size: 0;
+}
+#external-account button[name="provider"]::before,
+#external-account button[name="provider"]::after {
+    font-size: 14px;
+}
+
+#external-account button[name="provider"]:hover {
+    background: #f8f9fa;
+    border-color: var(--blue);
+    color: var(--blue);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+#external-account button[name="provider"]:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+}
+
+#external-account button[name="provider"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(8, 73, 117, .18);
+}
