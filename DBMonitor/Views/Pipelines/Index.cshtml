@@ -214,8 +214,8 @@
                 argsList.innerHTML = '';
                 (data.args || []).forEach(function (a) { addArgRow(a.name, '', a.required, a.help); });
 
-                // Reset deps on new pipeline load
-                elDeps.value = '';
+                // Pre-populate deps from the script's imports (server-detected)
+                elDeps.value = (data.packages || []).join('\n');
                 depsDetected.classList.add('d-none');
                 sectionDeps.classList.remove('border-warning');
 

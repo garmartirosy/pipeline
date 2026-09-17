@@ -43,9 +43,10 @@ public partial class PipelinesController : Controller
         {
             var client = _http.CreateClient();
             client.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
-            var content = await client.GetStringAsync(rawUrl, ct);
-            var args    = ParseArgparseArgs(content);
-            return Json(new { content, args, rawUrl });
+            var content  = await client.GetStringAsync(rawUrl, ct);
+            var args     = ParseArgparseArgs(content);
+            var packages = ParseImports(content);
+            return Json(new { content, args, rawUrl, packages });
         }
         catch (Exception ex)
         {
@@ -290,6 +291,83 @@ public partial class PipelinesController : Controller
         }
 
         return results;
+    }
+
+    // Top-level Python 3 standard-library modules — anything else is treated
+    // as a pip dependency. Not exhaustive; covers what we expect users to import.
+    private static readonly HashSet<string> StdLibModules = new(StringComparer.Ordinal)
+    {
+        "__future__", "__main__", "abc", "argparse", "array", "ast", "asyncio",
+        "base64", "bisect", "builtins", "bz2", "calendar", "collections",
+        "concurrent", "configparser", "contextlib", "copy", "csv", "ctypes",
+        "dataclasses", "datetime", "decimal", "difflib", "dis", "email", "enum",
+        "errno", "faulthandler", "fnmatch", "fractions", "functools", "gc",
+        "getopt", "getpass", "gettext", "glob", "gzip", "hashlib", "heapq",
+        "hmac", "html", "http", "importlib", "inspect", "io", "ipaddress",
+        "itertools", "json", "keyword", "locale", "logging", "lzma", "math",
+        "mimetypes", "mmap", "multiprocessing", "netrc", "numbers", "operator",
+        "os", "pathlib", "pickle", "pkgutil", "platform", "pprint", "queue",
+        "random", "re", "readline", "reprlib", "secrets", "select", "selectors",
+        "shelve", "shlex", "shutil", "signal", "site", "socket", "socketserver",
+        "sqlite3", "ssl", "stat", "statistics", "string", "stringprep", "struct",
+        "subprocess", "sys", "sysconfig", "syslog", "tempfile", "textwrap",
+        "threading", "time", "timeit", "token", "tokenize", "trace", "traceback",
+        "tracemalloc", "tty", "types", "typing", "unicodedata", "unittest",
+        "urllib", "uuid", "warnings", "wave", "weakref", "webbrowser", "wsgiref",
+        "xml", "xmlrpc", "zipfile", "zipimport", "zlib", "zoneinfo",
+    };
+
+    // Import-name → pip-package-name for modules that don't match their package.
+    private static readonly Dictionary<string, string> PackageAliases = new(StringComparer.Ordinal)
+    {
+        ["psycopg2"] = "psycopg2-binary",
+        ["cv2"]      = "opencv-python-headless",
+        ["sklearn"]  = "scikit-learn",
+        ["PIL"]      = "Pillow",
+        ["yaml"]     = "PyYAML",
+        ["bs4"]      = "beautifulsoup4",
+        ["dotenv"]   = "python-dotenv",
+        ["dateutil"] = "python-dateutil",
+        ["MySQLdb"]  = "mysqlclient",
+        ["serial"]   = "pyserial",
+        ["Crypto"]   = "pycryptodome",
+        ["OpenSSL"]  = "pyOpenSSL",
+    };
+
+    private static readonly Regex ImportRegex = new(
+        @"^\s*(?:import\s+([\w.]+(?:\s*,\s*[\w.]+)*)|from\s+([\w.]+)\s+import\s+)",
+        RegexOptions.Compiled | RegexOptions.Multiline);
+
+    private static List<string> ParseImports(string script)
+    {
+        var modules = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (Match m in ImportRegex.Matches(script))
+        {
+            if (m.Groups[1].Success)
+            {
+                foreach (var item in m.Groups[1].Value.Split(','))
+                {
+                    var top = item.Trim().Split('.')[0];
+                    if (top.Length > 0) modules.Add(top);
+                }
+            }
+            else if (m.Groups[2].Success)
+            {
+                var top = m.Groups[2].Value.Split('.')[0];
+                if (top.Length > 0) modules.Add(top);
+            }
+        }
+
+        var packages = new List<string>();
+        foreach (var mod in modules)
+        {
+            if (StdLibModules.Contains(mod)) continue;
+            packages.Add(PackageAliases.TryGetValue(mod, out var alias) ? alias : mod);
+        }
+
+        packages.Sort(StringComparer.Ordinal);
+        return packages;
     }
 
     private static IEnumerable<string> ExtractAddArgumentBlocks(string script)

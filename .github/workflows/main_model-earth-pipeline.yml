@@ -58,3 +58,4 @@ jobs:
           app-name: 'model-earth-pipeline'
           slot-name: 'Production'
           package: ./publish
+          startup-command: 'bash /home/site/wwwroot/startup.sh'
